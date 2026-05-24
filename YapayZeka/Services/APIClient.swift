@@ -35,6 +35,7 @@ struct VideoResponse: Decodable {
     let status: String?
     let videoUrl: String?
     let message: String?
+    let productionPlan: String?
 }
 struct HealthResponse: Decodable {
     let status: String

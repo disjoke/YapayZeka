@@ -11,6 +11,7 @@ final class VideoService: ObservableObject {
     @Published var statusMessage = ""
     @Published var error: String?
     @Published var usedDirectOpenAI = false
+    @Published var isSimulatedVideo = false
 
     private init() {}
 
@@ -66,12 +67,17 @@ final class VideoService: ObservableObject {
         isLoading = true
         error = nil
         videoURL = nil
+        isSimulatedVideo = false
         defer { isLoading = false }
 
         if BackendConfig.useBackend {
             do {
                 let result = try await APIClient.shared.aiVideoGenerate(prompt: trimmed)
+                isSimulatedVideo = result.status == "simulated"
                 statusMessage = result.message ?? result.status ?? "Video işlendi"
+                if let plan = result.productionPlan, !plan.isEmpty {
+                    script = trimmed + "\n\n——— ÇEKİM PLANI ———\n" + plan
+                }
                 if let urlString = result.videoUrl, let url = URL(string: urlString) {
                     videoURL = url
                 }

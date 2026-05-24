@@ -358,7 +358,14 @@ struct VideoGeneratorView: View {
             }
             if let error = video.error { AIErrorBanner(message: error) }
             if !video.statusMessage.isEmpty {
-                Text(video.statusMessage).font(.caption).foregroundStyle(AppTheme.success)
+                Text(video.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(video.isSimulatedVideo ? AppTheme.warning : AppTheme.success)
+            }
+            if video.isSimulatedVideo {
+                Text("MP4 için: replicate.com → API token → Render → REPLICATE_API_TOKEN")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             AIResultBox(text: video.script, isLoading: video.isLoading)
             if let url = video.videoURL {

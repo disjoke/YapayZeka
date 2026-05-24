@@ -1,12 +1,34 @@
 const REPLICATE = 'https://api.replicate.com/v1';
+const openai = require('./openai');
+
+async function buildProductionPlan(prompt) {
+  try {
+    return await openai.chat([
+      {
+        role: 'system',
+        content:
+          'Profesyonel video yapımcısısın. Türkçe, kısa ve uygulanabilir çekim planı yaz.',
+      },
+      {
+        role: 'user',
+        content: `Senaryo:\n${prompt}\n\nVer: 1) Sahne sahne çekim 2) Metin/alıtyazı 3) Müzik tonu 4) 15 sn Reels montaj notları`,
+      },
+    ]);
+  } catch {
+    return null;
+  }
+}
 
 async function generateVideo(prompt) {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
+    const plan = await buildProductionPlan(prompt);
     return {
       status: 'simulated',
-      message: 'REPLICATE_API_TOKEN tanımlı değil. Senaryo hazır; video render simüle edildi.',
+      message:
+        'Gerçek video dosyası (MP4) için Replicate gerekir. Şimdilik AI çekim planı ve montaj rehberi oluşturuldu.',
       videoUrl: null,
+      productionPlan: plan,
     };
   }
 
