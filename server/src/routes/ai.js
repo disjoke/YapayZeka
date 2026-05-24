@@ -1,6 +1,8 @@
 const express = require('express');
+const { v4: uuid } = require('uuid');
 const openai = require('../services/openai');
 const video = require('../services/video');
+const store = require('../db/store');
 const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
@@ -70,10 +72,22 @@ router.post('/video-script', async (req, res) => {
 router.post('/video-generate', async (req, res) => {
   try {
     const result = await video.generateVideo(req.body.prompt);
+    const history = store.getVideoHistory(req.user.id);
+    history.unshift({
+      id: uuid(),
+      prompt: req.body.prompt,
+      ...result,
+      createdAt: new Date().toISOString(),
+    });
+    store.saveVideoHistory(req.user.id, history.slice(0, 30));
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+router.get('/video-history', authMiddleware, (req, res) => {
+  res.json(store.getVideoHistory(req.user.id));
 });
 
 router.post('/content-calendar', async (req, res) => {

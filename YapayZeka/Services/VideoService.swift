@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import Photos
+import UIKit
 
 @MainActor
 final class VideoService: ObservableObject {
@@ -8,12 +10,145 @@ final class VideoService: ObservableObject {
     @Published var isLoading = false
     @Published var script = ""
     @Published var videoURL: URL?
+    @Published var localFileURL: URL?
     @Published var statusMessage = ""
     @Published var error: String?
     @Published var usedDirectOpenAI = false
     @Published var isSimulatedVideo = false
+    @Published var library: [VideoLibraryItem] = []
+    @Published var isDownloading = false
+    @Published var downloadMessage: String?
 
-    private init() {}
+    private static let libraryKey = "ekinciler.video.library"
+    private var lastPrompt = ""
+
+    private init() {
+        loadLibrary()
+    }
+
+    static func videosDirectory() -> URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Videos", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    func syncHistoryFromServer() async {
+        guard BackendConfig.useBackend else { return }
+        do {
+            let remote = try await APIClient.shared.futureVideoHistory()
+            mergeRemoteHistory(remote)
+        } catch {
+            // Sessiz — yerel liste kalır
+        }
+    }
+
+    func downloadCurrentVideo() async {
+        guard let remote = videoURL else {
+            downloadMessage = "İndirilecek video yok."
+            return
+        }
+        isDownloading = true
+        downloadMessage = nil
+        defer { isDownloading = false }
+        do {
+            let local = try await downloadFile(from: remote)
+            localFileURL = local
+            if let idx = library.firstIndex(where: { $0.remoteURLString == remote.absoluteString }) {
+                library[idx].localFileName = local.lastPathComponent
+            }
+            saveLibrary()
+            downloadMessage = "✓ Video indirildi. Galeri veya Paylaş kullanabilirsiniz."
+        } catch {
+            downloadMessage = "İndirme hatası: \(error.localizedDescription)"
+        }
+    }
+
+    func selectLibraryItem(_ item: VideoLibraryItem) async {
+        script = item.prompt
+        videoURL = item.remoteURL
+        localFileURL = item.localURL
+        isSimulatedVideo = item.status == "simulated"
+        if item.remoteURL != nil && item.localURL == nil {
+            await downloadCurrentVideo()
+        }
+    }
+
+    func saveToPhotoLibrary(fileURL: URL) async {
+        let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        guard status == .authorized || status == .limited else {
+            downloadMessage = "Fotoğraflar izni gerekli. Ayarlar → Ekinciler AI → Fotoğraflar."
+            return
+        }
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileURL)
+            }
+            downloadMessage = "✓ Video Fotoğraflar’a kaydedildi."
+        } catch {
+            downloadMessage = "Galeri kaydı başarısız: \(error.localizedDescription)"
+        }
+    }
+
+    func openInFiles(fileURL: URL) {
+        // Dosya zaten Documents/Videos içinde — kullanıcı Dosyalar uygulamasından erişir
+        downloadMessage = "Dosya: \(fileURL.lastPathComponent) (Dosyalar → iPhone’um → Ekinciler AI)"
+    }
+
+    private func downloadFile(from remote: URL) async throws -> URL {
+        let (temp, _) = try await URLSession.shared.download(from: remote)
+        let name = "video-\(UUID().uuidString).mp4"
+        let dest = Self.videosDirectory().appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: dest.path) {
+            try FileManager.default.removeItem(at: dest)
+        }
+        try FileManager.default.moveItem(at: temp, to: dest)
+        return dest
+    }
+
+    private func registerInLibrary(prompt: String, remote: URL?, status: String?) {
+        let entry = VideoLibraryItem(
+            id: UUID().uuidString,
+            prompt: prompt,
+            remoteURLString: remote?.absoluteString,
+            localFileName: nil,
+            status: status,
+            createdAt: Date()
+        )
+        library.removeAll { $0.remoteURLString == entry.remoteURLString && entry.remoteURLString != nil }
+        library.insert(entry, at: 0)
+        library = Array(library.prefix(30))
+        saveLibrary()
+    }
+
+    private func mergeRemoteHistory(_ items: [VideoHistoryItem]) {
+        for item in items {
+            if library.contains(where: { $0.id == item.id }) { continue }
+            library.append(VideoLibraryItem(
+                id: item.id,
+                prompt: item.prompt ?? "Video",
+                remoteURLString: item.videoUrl,
+                localFileName: nil,
+                status: item.status,
+                createdAt: ISO8601DateFormatter().date(from: item.createdAt ?? "") ?? Date()
+            ))
+        }
+        library.sort { $0.createdAt > $1.createdAt }
+        library = Array(library.prefix(30))
+        saveLibrary()
+    }
+
+    private func loadLibrary() {
+        guard let data = UserDefaults.standard.data(forKey: Self.libraryKey),
+              let decoded = try? JSONDecoder().decode([VideoLibraryItem].self, from: data) else { return }
+        library = decoded.filter { $0.hasLocalFile || $0.remoteURL != nil }
+    }
+
+    private func saveLibrary() {
+        if let data = try? JSONEncoder().encode(library) {
+            UserDefaults.standard.set(data, forKey: Self.libraryKey)
+        }
+    }
 
     func generateScript(topic: String, duration: String, style: String) async {
         let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -67,7 +202,10 @@ final class VideoService: ObservableObject {
         isLoading = true
         error = nil
         videoURL = nil
+        localFileURL = nil
         isSimulatedVideo = false
+        downloadMessage = nil
+        lastPrompt = trimmed
         defer { isLoading = false }
 
         if BackendConfig.useBackend {
@@ -80,7 +218,11 @@ final class VideoService: ObservableObject {
                 }
                 if let urlString = result.videoUrl, let url = URL(string: urlString) {
                     videoURL = url
+                    registerInLibrary(prompt: trimmed, remote: url, status: result.status)
+                } else {
+                    registerInLibrary(prompt: trimmed, remote: nil, status: result.status ?? "simulated")
                 }
+                await syncHistoryFromServer()
                 return
             } catch let err {
                 self.error = friendlyNetworkError(err) + (AppConfig.isAppStoreBuild

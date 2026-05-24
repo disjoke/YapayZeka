@@ -368,11 +368,13 @@ struct VideoGeneratorView: View {
                     .foregroundStyle(.secondary)
             }
             AIResultBox(text: video.script, isLoading: video.isLoading)
-            if let url = video.videoURL {
-                Link("Videoyu Aç", destination: url).font(.headline)
-            }
+
+            VideoWatchSection(video: video)
         }
-        .task { await session.checkBackend() }
+        .task {
+            await session.checkBackend()
+            await video.syncHistoryFromServer()
+        }
     }
 }
 

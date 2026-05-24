@@ -19,6 +19,10 @@
 		<string>fb</string>
 		<string>whatsapp</string>
 	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ürettiğiniz videoları Fotoğraflar uygulamasına kaydetmek için izin gerekir.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Video galerinize kaydetmek için fotoğraf kitaplığı erişimi gerekir.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
