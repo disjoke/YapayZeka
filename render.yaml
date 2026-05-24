@@ -1,0 +1,32 @@
+# Render Blueprint — tek tık deploy
+# dashboard.render.com → New + → Blueprint → disjoke/YapayZeka
+
+services:
+  - type: web
+    name: ekinciler-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_REDIRECT_URI
+        value: https://ekinciler-api.onrender.com/social/oauth/meta/callback
+      - key: META_APP_REDIRECT
+        value: ekinciler://oauth/meta
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: PUBLIC_API_URL
+        value: https://ekinciler-api.onrender.com

@@ -1,106 +1,63 @@
-# App Store — Kalıcı Çözüm (Tek Seferlik Kurulum)
+# App Store — Kalıcı Bulut Çözümü
 
-Kullanıcılar **Terminal, npm veya Mac sunucusu kullanmaz**. App Store sürümü otomatik olarak bulut API'ye bağlanır.
-
-## Nasıl çalışır?
-
-| Kim | Ne yapar |
-|-----|----------|
-| **Siz (geliştirici)** | Backend'i bir kez Render'a yükler, Meta ve OpenAI anahtarlarını girersiniz |
-| **App Store kullanıcısı** | Uygulamayı indirir → kayıt olur → Facebook bağlar → AI kullanır |
-
-Release derlemesi (`Archive` → App Store) her zaman şu adrese gider:
-
-`https://ekinciler-api.onrender.com`  
-(URL'yi deploy sonrası `YapayZeka/Config/AppConfig.swift` içinde güncelleyin)
+**Kullanıcılar Terminal/npm kullanmaz.** Release derlemesi otomatik: `https://ekinciler-api.onrender.com`
 
 ---
 
-## Adım 1 — Backend'i Render'a yükleyin (15 dk)
+## Sizin yapmanız gereken (tek sefer, ~10 dk)
 
-1. [render.com](https://render.com) hesabı açın (GitHub ile giriş önerilir)
-2. **New +** → **Web Service**
-3. Repo bağlayın veya `server/` klasörünü yükleyin
-4. Ayarlar:
-   - **Root Directory:** `server`
-   - **Runtime:** Docker (veya Node — `Dockerfile` mevcut)
-   - **Health Check Path:** `/health`
-5. **Environment Variables** ekleyin:
+### 1. Render deploy
 
-| Değişken | Değer |
-|----------|--------|
-| `NODE_ENV` | `production` |
-| `JWT_SECRET` | Güçlü rastgele metin (32+ karakter) |
-| `OPENAI_API_KEY` | `sk-...` |
-| `META_APP_ID` | Facebook uygulama ID |
-| `META_APP_SECRET` | Facebook gizli anahtar |
-| `META_REDIRECT_URI` | `https://SIZIN-SERVIS.onrender.com/social/oauth/meta/callback` |
-| `META_APP_REDIRECT` | `ekinciler://oauth/meta` |
-| `CORS_ORIGIN` | `*` |
+Detaylı: **`RENDER_TEK_TIK.md`**
 
-6. **Deploy** → URL alın (ör. `https://ekinciler-api.onrender.com`)
-7. Tarayıcıda test: `https://SIZIN-SERVIS.onrender.com/health` → `{"status":"ok",...}` görmelisiniz
+Kısa yol:
 
-> **Not:** `ekinciler-api.onrender.com` şu an boş/404 dönebilir — sizin oluşturduğunuz servisin URL'sini kullanın.
+1. [dashboard.render.com](https://dashboard.render.com) → **New +** → **Blueprint**
+2. Repo: **`disjoke / YapayZeka`**
+3. **`OPENAI_API_KEY`** girin (`sk-...`)
+4. Deploy bitince test: https://ekinciler-api.onrender.com/health
 
----
+### 2. Meta (Facebook) — isteğe bağlı
 
-## Adım 2 — iOS uygulamasında URL
+[developers.facebook.com](https://developers.facebook.com/apps/) → OAuth Redirect:
 
-`YapayZeka/Config/AppConfig.swift`:
-
-```swift
-static let productionAPIBaseURL = "https://SIZIN-SERVIS.onrender.com"
+```
+https://ekinciler-api.onrender.com/social/oauth/meta/callback
 ```
 
-Xcode → **Product → Archive** → App Store Connect.
+Render Environment'a `META_APP_ID` ve `META_APP_SECRET` ekleyin.
+
+### 3. App Store
+
+- iOS URL hazır: `YapayZeka/Config/AppConfig.swift`
+- Xcode → **Product → Archive**
+- Gizlilik politikası URL gerekli
 
 ---
 
-## Adım 3 — Meta Developer (Facebook / Instagram)
+## Kullanıcı deneyimi
 
-1. [developers.facebook.com](https://developers.facebook.com/apps/)
-2. Uygulama → **Facebook Login** → **Valid OAuth Redirect URIs**
-3. Ekleyin: `https://SIZIN-SERVIS.onrender.com/social/oauth/meta/callback`
-4. Instagram: İşletme/Creator hesap + Facebook Sayfası bağlantısı gerekli
-
----
-
-## Adım 4 — App Store Connect
-
-- Gizlilik politikası URL (zorunlu)
-- Uygulama açıklamasında: Facebook/Instagram OAuth kullanıldığı belirtilmeli
-- `ekinciler://` URL scheme zaten kayıtlı
-
----
-
-## Kullanıcı deneyimi (App Store)
-
-1. Uygulamayı App Store'dan indirir
-2. **Kayıt Ol** (veya giriş) — bulut hesabı oluşur
-3. **Sosyal Medya → Facebook ile Bağlan** — resmi Facebook sayfası açılır
-4. OpenAI anahtarı **gerekmez** (sunucudaki anahtarınız kullanılır)
-
-`admin / 1234` demo hesabı **sadece Xcode DEBUG** derlemesinde çalışır; App Store sürümünde yoktur.
+1. App Store'dan indir
+2. Kayıt ol / giriş
+3. Sosyal Medya → Facebook ile Bağlan
+4. OpenAI anahtarı gerekmez (sunucuda)
 
 ---
 
 ## Geliştirme vs App Store
 
-| | Xcode DEBUG | App Store RELEASE |
-|---|-------------|-------------------|
-| API | localhost (Ayarlar'dan değiştirilebilir) | Bulut HTTPS (sabit) |
-| Terminal | `cd server && npm start` | Gerekmez |
-| Demo giriş | admin / 1234 | Yok — kayıt zorunlu |
+| | DEBUG (Xcode) | RELEASE (App Store) |
+|---|---------------|---------------------|
+| API | localhost | `ekinciler-api.onrender.com` |
+| Terminal | `cd server && npm start` | Yok |
+| Demo | admin / 1234 | Kayıt zorunlu |
 
 ---
 
-## Sorun giderme
+## Dosyalar
 
-| Sorun | Çözüm |
-|-------|--------|
-| «Bulut sunucuya ulaşılamıyor» | Render servisi uyuyor olabilir; `/health` açın, ilk istek 30–60 sn sürebilir |
-| Facebook bağlanmıyor | `META_REDIRECT_URI` Render URL ile birebir aynı mı? |
-| Video çalışmıyor | `OPENAI_API_KEY` Render env'de tanımlı mı? |
-
-Detaylı deploy: `APP_STORE_DEPLOY.md`
+| Dosya | Açıklama |
+|-------|----------|
+| `render.yaml` | Render Blueprint (otomatik ayar) |
+| `RENDER_TEK_TIK.md` | Adım adım Render |
+| `deploy/RENDER_ENV_ORNEK.env` | Ortam değişkenleri şablonu |
