@@ -1,0 +1,21 @@
+# Gizli anahtarlar — asla GitHub'a gitmesin
+server/.env
+.env
+*.pem
+
+# Node
+server/node_modules/
+node_modules/
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+
+# macOS
+.DS_Store
+
+# Cursor / IDE
+.cursor/
