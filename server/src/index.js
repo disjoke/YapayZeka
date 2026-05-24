@@ -28,11 +28,19 @@ app.get('/', (_, res) => {
   res.json({ service: 'Ekinciler AI API', version: '1.0', status: 'ok' });
 });
 
+function isOpenAIKeyValid() {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return false;
+  if (key.includes('....') || key.includes('BURAYA') || key.includes('your-openai')) return false;
+  return key.startsWith('sk-') && key.length >= 40;
+}
+
 app.get('/health', (_, res) => {
   res.json({
     status: 'ok',
     service: 'Ekinciler AI Backend',
-    openai: !!process.env.OPENAI_API_KEY,
+    openai: isOpenAIKeyValid(),
+    openaiConfigured: !!process.env.OPENAI_API_KEY,
     meta: !!process.env.META_APP_ID,
     whatsapp: !!process.env.WHATSAPP_ACCESS_TOKEN,
     replicate: !!process.env.REPLICATE_API_TOKEN,

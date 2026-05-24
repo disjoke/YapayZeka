@@ -108,6 +108,14 @@ final class VideoService: ObservableObject {
             case .unauthorized:
                 return "Oturum geçersiz. Ayarlar → Çıkış Yap → admin / 1234 ile tekrar giriş yapın (bulut hesabı)."
             case .server(let msg):
+                if msg.lowercased().contains("incorrect api key") || msg.contains("sk-....") {
+                    return """
+                    OpenAI anahtarı Render'da geçersiz.
+
+                    dashboard.render.com → ekinciler-api → Environment → OPENAI_API_KEY
+                    Eski değeri silin, platform.openai.com'dan yeni sk- anahtarı yapıştırın, Save → redeploy bekleyin.
+                    """
+                }
                 return msg
             case .network:
                 if AppConfig.isAppStoreBuild {
