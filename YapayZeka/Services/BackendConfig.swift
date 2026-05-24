@@ -5,12 +5,12 @@ enum BackendConfig {
     private static let useBackendKey = "ekinciler.backend.enabled"
     private static let didMigrateToCloudKey = "ekinciler.migrated.cloud"
 
-    /// Geliştirme ortamı varsayılanı
+    /// Simülatör: localhost. Gerçek iPhone: Render bulutu (127.0.0.1 telefonda çalışmaz).
     static var developerDefaultURL: String {
         #if targetEnvironment(simulator)
         return "http://127.0.0.1:3000"
         #else
-        return "http://127.0.0.1:3000"
+        return AppConfig.productionAPIBaseURL
         #endif
     }
 
@@ -52,12 +52,36 @@ enum BackendConfig {
         return true
     }
 
-    /// İlk App Store açılışında localhost kaydını temizle
+    /// App Store + gerçek cihazda localhost kaydını buluta çevir
     static func migrateToCloudIfNeeded() {
-        guard AppConfig.isAppStoreBuild else { return }
-        guard !UserDefaults.standard.bool(forKey: didMigrateToCloudKey) else { return }
-        UserDefaults.standard.removeObject(forKey: urlKey)
         UserDefaults.standard.set(true, forKey: useBackendKey)
-        UserDefaults.standard.set(true, forKey: didMigrateToCloudKey)
+
+        if AppConfig.isAppStoreBuild {
+            guard !UserDefaults.standard.bool(forKey: didMigrateToCloudKey) else { return }
+            UserDefaults.standard.removeObject(forKey: urlKey)
+            UserDefaults.standard.set(true, forKey: didMigrateToCloudKey)
+            return
+        }
+
+        #if !targetEnvironment(simulator)
+        let stored = UserDefaults.standard.string(forKey: urlKey) ?? ""
+        if stored.isEmpty || stored.contains("127.0.0.1") || stored.contains("localhost") {
+            UserDefaults.standard.set(AppConfig.productionAPIBaseURL, forKey: urlKey)
+        }
+        #endif
+    }
+
+    /// DEBUG: localhost yanıt vermezse otomatik buluta geç
+    static func preferCloudIfLocalhostUnreachable() async {
+        #if DEBUG
+        guard !AppConfig.isAppStoreBuild else { return }
+        let url = baseURL
+        guard url.contains("127.0.0.1") || url.contains("localhost") else { return }
+        do {
+            _ = try await APIClient.shared.health()
+        } catch {
+            self.baseURL = AppConfig.productionAPIBaseURL
+        }
+        #endif
     }
 }

@@ -106,7 +106,7 @@ final class VideoService: ObservableObject {
             case .invalidURL:
                 return "Sunucu adresi geçersiz. Ayarlar → Backend URL kontrol edin."
             case .unauthorized:
-                return "Oturum süresi dolmuş. Çıkış yapıp tekrar giriş yapın."
+                return "Oturum geçersiz. Ayarlar → Çıkış Yap → admin / 1234 ile tekrar giriş yapın (bulut hesabı)."
             case .server(let msg):
                 return msg
             case .network:

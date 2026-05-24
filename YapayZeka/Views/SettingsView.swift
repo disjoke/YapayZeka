@@ -16,6 +16,17 @@ struct SettingsView: View {
 
             if !AppConfig.isAppStoreBuild {
                 developerServerSection
+                Section("Gerçek iPhone") {
+                    Text("Telefonda varsayılan adres: \(AppConfig.productionAPIBaseURL)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    AIButton("Buluta Geç", icon: "cloud.fill", style: .secondary) {
+                        BackendConfig.baseURL = AppConfig.productionAPIBaseURL
+                        Task { await session.checkBackend() }
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(Color.clear)
+                }
             }
 
             if !AppConfig.isAppStoreBuild {

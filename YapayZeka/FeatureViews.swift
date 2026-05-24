@@ -334,11 +334,16 @@ struct VideoGeneratorView: View {
             if !session.backendOnline && !settings.hasValidAPIKey {
                 AIErrorBanner(message: AppConfig.isAppStoreBuild
                     ? AppConfig.cloudUnavailableMessage
-                    : "Sunucu kapalı ve OpenAI anahtarı yok. Ayarlar → OpenAI veya cd server && npm start")
-            } else if !session.backendOnline && settings.hasValidAPIKey && !AppConfig.isAppStoreBuild {
+                    : "Buluta bağlanılamıyor. Ayarlar → Bağlantıyı Yenile veya çıkış yapıp admin/1234 ile tekrar giriş yapın.")
+            } else if session.backendOnline {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(AppTheme.success)
-                    Text("Sunucu kapalı — senaryo OpenAI ile oluşturulacak").font(.caption)
+                    Text("Ekinciler Bulut bağlı — video ve senaryo sunucudan").font(.caption)
+                }
+            } else if settings.hasValidAPIKey && !AppConfig.isAppStoreBuild {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(AppTheme.success)
+                    Text("Yedek: senaryo cihazdaki OpenAI ile").font(.caption)
                 }
             }
 

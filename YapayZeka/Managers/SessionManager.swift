@@ -25,6 +25,7 @@ final class SessionManager: ObservableObject {
             backendOnline = false
             return
         }
+        await BackendConfig.preferCloudIfLocalhostUnreachable()
         do {
             _ = try await APIClient.shared.health()
             backendOnline = true
